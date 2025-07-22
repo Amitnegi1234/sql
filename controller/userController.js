@@ -1,60 +1,57 @@
 import { db } from "../utils/db.js";
+import User from "../models/user.js";
 export const home=(req,res)=>{
     res.send("jj");
 }
 
-export const addUser=(req,res)=>{
-    const {name,email}=req.body;
-    const addQuery=`insert into user (name,email) values(?,?)`;
-
-    db.execute(addQuery,[name,email],(err)=>{
-        if(err){
-            console.log(err.message);
-            res.status(500).send(err.message);
-            db.end();
-            return;
-        }
-        console.log(`user added`);
-        res.status(200).send(`user with name ${name} is inserted`)
-    })
+export const addUser=async(req,res)=>{
+    try {
+        const {name,email}=req.body;
+        const user=await User.create({
+            name:name,
+            email:email
+        })
+        res.status(201).send(`user with name ${name} created`);
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(`unable to make entry`);
+    }
 }
 
-export const editUser =(req,res)=>{
-    const {id}=req.params;
-    const {name,email}=req.body;
-    const editQuery=`update user set name=?,email=? where id=?`;
+export const editUser =async(req,res)=>{
+    try {
+        const {id}=req.params;
+        const {name,email}=req.body;
+        const user=await User.findByPk(id);
+        if(!user){
+            return res.status(404).send("user not found");
+        }
+        user.name=name;
+        user.email=email;
+        await user.save();
+        res.status(200).send("user updated");
 
-    db.execute(editQuery,[name,email,id],(err,result)=>{
-        if(err){
-            console.log(err.message);
-            res.status(500).send(err.message);
-            db.end();
-            return;
-        }
-        if(result.affectedRows==0){
-            res.status(404).send("student not found");
-            return
-        }
-        console.log("user updated");
-        res.status(200).send(`user with id ${id} updated`);
-    })
+    } catch (error) {
+        console.log(error);
+        return res.status(500).send(error.message);
+    }   
 }
 
-export const deleteUser=(req,res)=>{
-    const {id} =req.params;
-    const delQuery=`delete from user where id=?`;
-    db.execute(delQuery,[id],(err,result)=>{
-        if(err){
-            console.log(err.message);
-            res.status(500).send(err.message);
-            db.end();
-            return;
+export const deleteUser=async(req,res)=>{
+    try {
+        const {id} =req.params;
+        const user =await User.destroy({
+            where:{
+                id:id
+            }
+        })
+        if(!user){
+           return res.status(404).send("user not found"); 
         }
-        if(result.affectedRows==0){
-            res.status(404).send("student not found");
-            return
-        }
-        console.log("user deleted");
         res.status(200).send(`user with id ${id} deleted`);
-    })
+    } catch (error) {
+        console.log(error);
+         res.status(500).send(error.message);
+    }
+
 }
